@@ -1,0 +1,8 @@
+{
+    "broker": "cjsg.ddns.net",
+    "port": 1883,
+    "topic": "/weather",
+    "username": "cd",
+    "password": "1qaz\"WSX",
+    "client_id": "weather_client_7f14db71"
+}

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustWind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+            /* Chrome, Safari, Opera */
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        #mqtt-logs {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        #mqtt-logs .log-entry {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        #mqtt-logs .log-info {
+            color: #e0e0e0;
+        }
+
+        #mqtt-logs .log-sucesso {
+            color: #22c55e;
+        }
+
+        #mqtt-logs .log-erro {
+            color: #ef4444;
+        }
+
+        #mqtt-logs .log-aviso {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-blue-100 to-blue-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8 pt-2">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold text-blue-800">TrustWind</h1>
+                <p class="text-blue-600 mt-2">Dados meteorológicos em tempo real</p>
+            </div>
+            <div class="flex items-center">
+                <span class="mr-4 text-blue-800">Olá, {{ nome_utilizador }}</span>
+                <a href="/logout"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                    Sair
+                </a>
+            </div>
+        </header>
+
+        <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800">Condições Atuais</h2>
+                <div class="flex items-center">
+                    <div id="websocket-status-conexao" class="flex items-center mr-4">
+                        <span id="websocket-status-indicador" class="w-3 h-3 rounded-full bg-gray-400 mr-2"></span>
+                        <span class="text-gray-600 text-sm">WebSocket</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dados-meteorologicos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in">
+                <div class="bg-blue-50 p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-blue-800 mb-2">Temperatura</h3>
+                    <p id="temperatura" class="text-3xl font-bold text-blue-900">--°C</p>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-blue-800 mb-2">Humidade</h3>
+                    <p id="umidade" class="text-3xl font-bold text-blue-900">--%</p>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-blue-800 mb-2">Última Atualização</h3>
+                    <p id="timestamp" class="text-xl font-bold text-blue-900">--</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800">Informações de Conexão</h2>
+                <div class="flex items-center">
+                    <div id="mqtt-status-conexao" class="flex items-center mr-4">
+                        <span id="mqtt-status-indicador" class="w-3 h-3 rounded-full bg-gray-400 mr-2"></span>
+                        <span class="text-gray-600 text-sm">MQTT</span>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Configuração MQTT</h3>
+                    <button id="configurar-mqtt"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        Configurar Credenciais MQTT
+                    </button>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Estatísticas</h3>
+                    <p id="atualizacoes-recebidas" class="text-gray-700">Atualizações recebidas: 0</p>
+                    <p id="ultima-atualizacao" class="text-gray-700">Última atualização: --</p>
+                </div>
+            </div>
+            <div id="mqtt-logs" class="mt-4 no-scrollbar"></div>
+        </div>
+
+        <!-- Modal para configurar credenciais MQTT -->
+        <div id="mqtt-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Configurar Credenciais MQTT</h3>
+                <form id="mqtt-form" class="space-y-6">
+                    <div>
+                        <label for="mqtt-configs" class="block text-sm font-medium text-gray-700 mb-2">Configurações
+                            Salvas</label>
+                        <select id="mqtt-configs"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">Nova Configuração</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="mqtt-broker" class="block text-sm font-medium text-gray-700 mb-2">Broker</label>
+                            <input type="text" id="mqtt-broker" name="broker"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                value="broker.emqx.io">
+                        </div>
+                        <div>
+                            <label for="mqtt-port" class="block text-sm font-medium text-gray-700 mb-2">Porta</label>
+                            <input type="number" id="mqtt-port" name="port"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                value="1883" min="1" max="65535">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="mqtt-topic" class="block text-sm font-medium text-gray-700 mb-2">Tópico</label>
+                        <input type="text" id="mqtt-topic" name="topic"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value="/weather">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="mqtt-username"
+                                class="block text-sm font-medium text-gray-700 mb-2">Utilizador</label>
+                            <input type="text" id="mqtt-username" name="username"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label for="mqtt-password"
+                                class="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                            <input type="password" id="mqtt-password" name="password"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="mqtt-client-id" class="block text-sm font-medium text-gray-700 mb-2">Client ID
+                            (opcional)</label>
+                        <input type="text" id="mqtt-client-id" name="client_id"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Deixe vazio para gerar automaticamente">
+                    </div>
+                    <div id="mqtt-error" class="text-red-600 text-sm text-center hidden"></div>
+                    <div class="flex justify-center space-x-4">
+                        <button type="button" id="mqtt-cancelar"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-6 rounded-md transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="mqtt-salvar"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors">
+                            Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <footer class="text-center text-gray-600 mt-8">
+            <p>© 2025 TrustWind</p>
+        </footer>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let socket = null;
+        let statusIntervalId = null;
+        let contadorAtualizacoes = 0;
+
+        // Elementos DOM
+        const websocketStatusIndicador = document.getElementById('websocket-status-indicador');
+        const mqttStatusIndicador = document.getElementById('mqtt-status-indicador');
+        const mqttLogs = document.getElementById('mqtt-logs');
+        const atualizacoesRecebidas = document.getElementById('atualizacoes-recebidas');
+        const ultimaAtualizacao = document.getElementById('ultima-atualizacao');
+        const configurarMqttButton = document.getElementById('configurar-mqtt');
+        const mqttModal = document.getElementById('mqtt-modal');
+        const mqttForm = document.getElementById('mqtt-form');
+        const mqttConfigsSelect = document.getElementById('mqtt-configs');
+        const mqttBroker = document.getElementById('mqtt-broker');
+        const mqttPort = document.getElementById('mqtt-port');
+        const mqttTopic = document.getElementById('mqtt-topic');
+        const mqttUsername = document.getElementById('mqtt-username');
+        const mqttPassword = document.getElementById('mqtt-password');
+        const mqttClientId = document.getElementById('mqtt-client-id');
+        const mqttError = document.getElementById('mqtt-error');
+        const mqttCancelar = document.getElementById('mqtt-cancelar');
+        const mqttSalvar = document.getElementById('mqtt-salvar');
+
+        // Função para adicionar mensagens ao console de logs
+        function adicionarLog(tipo, mensagem) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${tipo}`;
+            logEntry.textContent = `[${timestamp}] ${mensagem}`;
+            mqttLogs.appendChild(logEntry);
+            mqttLogs.scrollTop = mqttLogs.scrollHeight; // Scroll automático para o final
+        }
+
+        // Função para validar e atualizar a interface com os dados
+        function atualizarInterface(dados) {
+            if (!dados || !dados.temperatura || !dados.humidade || !dados.timestamp) {
+                console.error('Dados inválidos:', dados);
+                adicionarLog('erro', 'Dados inválidos recebidos');
+                return;
+            }
+
+            document.getElementById('temperatura').textContent = `${dados.temperatura}°C`;
+            document.getElementById('umidade').textContent = `${dados.humidade}%`;
+            document.getElementById('timestamp').textContent = dados.timestamp;
+
+            const dadosContainer = document.getElementById('dados-meteorologicos');
+            dadosContainer.classList.remove('fade-in');
+            void dadosContainer.offsetWidth;
+            dadosContainer.classList.add('fade-in');
+
+            contadorAtualizacoes++;
+            atualizacoesRecebidas.textContent = `Atualizações recebidas: ${contadorAtualizacoes}`;
+            ultimaAtualizacao.textContent = `Última atualização: ${new Date().toLocaleTimeString()}`;
+            adicionarLog('sucesso', 'Dados recebidos via MQTT');
+        }
+
+        // Função para atualizar o status do WebSocket
+        function atualizarStatusWebSocket(status, mensagem) {
+            let logTipo = 'info';
+            switch (status) {
+                case 'conectado':
+                    websocketStatusIndicador.className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                    logTipo = 'sucesso';
+                    break;
+                case 'desconectado':
+                    websocketStatusIndicador.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                    logTipo = 'aviso';
+                    break;
+                case 'conectando':
+                    websocketStatusIndicador.className = 'w-3 h-3 rounded-full bg-yellow-500 mr-2 pulse';
+                    logTipo = 'info';
+                    break;
+                case 'erro':
+                    websocketStatusIndicador.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                    logTipo = 'erro';
+                    break;
+            }
+            adicionarLog(logTipo, mensagem);
+        }
+
+        // Função para atualizar o status do MQTT
+        function atualizarStatusMqtt(status, mensagem) {
+            let logTipo = 'info';
+            switch (status) {
+                case 'conectado':
+                    mqttStatusIndicador.className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                    logTipo = 'sucesso';
+                    break;
+                case 'desconectado':
+                    mqttStatusIndicador.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                    logTipo = 'aviso';
+                    break;
+                case 'conectando':
+                    mqttStatusIndicador.className = 'w-3 h-3 rounded-full bg-yellow-500 mr-2 pulse';
+                    logTipo = 'info';
+                    break;
+                case 'erro':
+                    mqttStatusIndicador.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                    logTipo = 'erro';
+                    break;
+            }
+            adicionarLog(logTipo, mensagem);
+        }
+
+        // Função para verificar o status MQTT
+        async function verificarStatusMqtt() {
+            try {
+                const response = await fetch('/api/status-mqtt');
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                const status = await response.json();
+                atualizarStatusMqtt(status.status, status.mensagem);
+            } catch (erro) {
+                console.error('Erro ao verificar status MQTT:', erro);
+                atualizarStatusMqtt('erro', 'Erro ao verificar status MQTT');
+            }
+        }
+
+        // Função para iniciar conexão WebSocket
+        function iniciarWebSocket() {
+            if (socket && socket.connected) {
+                return;
+            }
+            if (socket) {
+                socket.disconnect();
+            }
+
+            atualizarStatusWebSocket('conectando', 'Conectando ao WebSocket...');
+            socket = io();
+
+            socket.on('connect', () => {
+                atualizarStatusWebSocket('conectado', 'Conectado ao WebSocket');
+                console.log('Conectado ao WebSocket');
+                verificarStatusMqtt();
+            });
+
+            socket.on('disconnect', () => {
+                atualizarStatusWebSocket('desconectado', 'Desconectado do WebSocket');
+                console.log('Desconectado do WebSocket');
+            });
+
+            socket.on('connect_error', (error) => {
+                atualizarStatusWebSocket('erro', `Erro de conexão WebSocket: ${error.message}`);
+                console.error('Erro de conexão WebSocket:', error);
+            });
+
+            socket.on('atualizacao_dados', (dados) => {
+                console.log('Dados recebidos via WebSocket:', dados);
+                atualizarInterface(dados);
+            });
+
+            socket.on('mqtt_status', (status) => {
+                console.log('Status MQTT recebido:', status);
+                atualizarStatusMqtt(status.status, status.mensagem);
+            });
+        }
+
+        // Função para carregar configurações MQTT salvas
+        async function carregarConfiguracoesMqtt() {
+            try {
+                const response = await fetch('/api/listar-configs-mqtt');
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                const configs = await response.json();
+                mqttConfigsSelect.innerHTML = '<option value="">Nova Configuração</option>';
+                configs.forEach(config => {
+                    const option = document.createElement('option');
+                    option.value = config.filename;
+                    option.textContent = config.filename === 'default.json'
+                        ? `Padrão: ${config.broker}:${config.port} - ${config.topic}`
+                        : `${config.broker}:${config.port} - ${config.topic} (${config.filename})`;
+                    mqttConfigsSelect.appendChild(option);
+                });
+            } catch (erro) {
+                console.error('Erro ao carregar configurações MQTT:', erro);
+                mqttError.textContent = 'Erro ao carregar configurações salvas';
+                mqttError.classList.remove('hidden');
+            }
+        }
+
+        // Função para validar campos obrigatórios
+        function validarFormulario() {
+            mqttError.classList.add('hidden');
+            if (!mqttBroker.value.trim()) {
+                mqttError.textContent = 'O campo Broker é obrigatório';
+                mqttError.classList.remove('hidden');
+                mqttBroker.focus();
+                return false;
+            }
+            if (!mqttPort.value || mqttPort.value < 1 || mqttPort.value > 65535) {
+                mqttError.textContent = 'A Porta deve ser um número entre 1 e 65535';
+                mqttError.classList.remove('hidden');
+                mqttPort.focus();
+                return false;
+            }
+            if (!mqttTopic.value.trim()) {
+                mqttError.textContent = 'O campo Tópico é obrigatório';
+                mqttError.classList.remove('hidden');
+                mqttTopic.focus();
+                return false;
+            }
+            return true;
+        }
+
+        // Configura o modal de credenciais MQTT
+        configurarMqttButton.addEventListener('click', function () {
+            mqttModal.classList.remove('hidden');
+            mqttError.classList.add('hidden');
+            mqttForm.reset();
+            mqttBroker.value = 'broker.emqx.io';
+            mqttPort.value = '1883';
+            mqttTopic.value = '/weather';
+            mqttUsername.value = '';
+            mqttPassword.value = '';
+            mqttClientId.value = '';
+            mqttConfigsSelect.value = '';
+            carregarConfiguracoesMqtt();
+        });
+
+        // Fechar modal ao clicar fora
+        mqttModal.addEventListener('click', function (event) {
+            if (event.target === mqttModal) {
+                mqttModal.classList.add('hidden');
+                mqttError.classList.add('hidden');
+            }
+        });
+
+        mqttCancelar.addEventListener('click', function () {
+            mqttModal.classList.add('hidden');
+            mqttError.classList.add('hidden');
+        });
+
+        mqttConfigsSelect.addEventListener('change', async function () {
+            const filename = this.value;
+            if (!filename) {
+                mqttBroker.value = 'broker.emqx.io';
+                mqttPort.value = '1883';
+                mqttTopic.value = '/weather';
+                mqttUsername.value = '';
+                mqttPassword.value = '';
+                mqttClientId.value = '';
+                return;
+            }
+            try {
+                const response = await fetch('/api/listar-configs-mqtt');
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                const configs = await response.json();
+                const config = configs.find(c => c.filename === filename);
+                if (config) {
+                    mqttBroker.value = config.broker;
+                    mqttPort.value = config.port;
+                    mqttTopic.value = config.topic;
+                    mqttUsername.value = config.username;
+                    mqttPassword.value = config.password;
+                    mqttClientId.value = config.client_id;
+                }
+            } catch (erro) {
+                console.error('Erro ao carregar configuração selecionada:', erro);
+                mqttError.textContent = 'Erro ao carregar configuração';
+                mqttError.classList.remove('hidden');
+            }
+        });
+
+        mqttForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            if (!validarFormulario()) {
+                return;
+            }
+            const broker = mqttBroker.value;
+            const port = mqttPort.value;
+            const topic = mqttTopic.value;
+            const username = mqttUsername.value;
+            const password = mqttPassword.value;
+            const client_id = mqttClientId.value;
+            const filename = mqttConfigsSelect.value;
+
+            try {
+                const response = await fetch('/api/configurar-mqtt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ broker, port, topic, username, password, client_id, filename })
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    mqttModal.classList.add('hidden');
+                    atualizarStatusMqtt('conectando', `Tentando conectar ao MQTT (${broker}:${port})...`);
+                    iniciarWebSocket();
+                    console.log('Configurações MQTT salvas:', result.message);
+                } else {
+                    mqttError.textContent = result.error || 'Erro ao configurar MQTT';
+                    mqttError.classList.remove('hidden');
+                    atualizarStatusMqtt('erro', result.error || 'Erro ao configurar MQTT');
+                }
+            } catch (erro) {
+                mqttError.textContent = 'Erro ao conectar ao servidor';
+                mqttError.classList.remove('hidden');
+                atualizarStatusMqtt('erro', 'Erro ao conectar ao servidor');
+                console.error('Erro ao configurar MQTT:', erro);
+            }
+        });
+
+        // Inicializa a página
+        document.addEventListener('DOMContentLoaded', function () {
+            adicionarLog('info', 'Inicializando interface TrustWind...');
+            iniciarWebSocket();
+            verificarStatusMqtt();
+            statusIntervalId = setInterval(verificarStatusMqtt, 10000); // Verifica status a cada 10 segundos
+        });
+
+        // Reconecta WebSocket apenas se necessário
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && socket && !socket.connected) {
+                iniciarWebSocket();
+            }
+        });
+    </script>
+</body>
+
+</html>

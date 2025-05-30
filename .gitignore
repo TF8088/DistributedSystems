@@ -1,0 +1,104 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+venv/
+.env/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Flask instance folder
+instance/
+.webassets-cache
+
+# SQLite database files
+*.sqlite
+*.sqlite3
+database.sqlite
+database/data/*.sqlite
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+
+# dotenv environment variables
+.env
+.env.*
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# VS Code
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# MQTT configs (optional, keep only templates)
+app/mqtt_configs/*.json
+!app/mqtt_configs/default.json
+
+# Ignore Docker build cache
+__docker_build_cache__/
+
+# Ignore test artifacts
+*.bak
+*.tmp
+
+# Ignore compiled JS
+*.map
+
+# Ignore coverage output
+.coverage/
+coverage/
+
+# Ignore output from start.bat
+*.out
+
+# Ignore any secrets
+secrets.*
+
+# Ignore Python test files output
+.pytest_cache/
+
+# Ignore any backup files
+*~
+
+# Ignore all files in data except .gitkeep (if you want to keep the folder)
+database/data/*
+!database/data/.gitkeep

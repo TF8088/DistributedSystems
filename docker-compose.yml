@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  python-server:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app/mqtt_configs:/app/mqtt_configs
+    environment:
+      - FLASK_ENV=production
+      - API_BASE_URL=http://js-server:3000
+    networks:
+      - app-network
+    depends_on:
+      js-server:
+        condition: service_healthy
+    command: >
+      sh -c "sleep 10 && gunicorn --bind 0.0.0.0:5000 --workers 2 app:app"
+
+  js-server:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./database/data:/app/data
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/users"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mqtt_configs:
+  data:
