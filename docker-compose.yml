@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  app-network:
+    driver: bridge
+
 services:
   python-server:
     build:
@@ -39,9 +43,6 @@ services:
       retries: 5
       start_period: 10s
 
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   mqtt_configs:

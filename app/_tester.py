@@ -16,9 +16,11 @@ def generate_weather_data():
     humidade = round(random.uniform(50.0, 90.0), 1)    # Humidade entre 50% e 90%
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     return {
-        "temperatura": temperatura,
-        "humidade": humidade,
-        "timestamp": timestamp
+        "temperature": temperatura,
+        "humidity": humidade,
+        "timestamp": timestamp,
+        "latitude": round(random.uniform(-90.0, 90.0), 6),  # Latitude aleatória
+        "longitude": round(random.uniform(-180.0, 180.0), 6),  # Longitude aleatória
     }
 
 # Callback para quando o cliente se conecta ao broker
