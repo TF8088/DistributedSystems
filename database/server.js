@@ -15,7 +15,7 @@ app.use(cors());
 
 // Middleware para logar requisições
 app.use((req, res, next) => {
-  const timestamp = new Date().toLocaleString('pt-BR');
+  const timestamp = new Date().toLocaleString('pt-PT');
   console.log(`[${timestamp}] Requisição: ${req.method} ${req.url}`);
   if (Object.keys(req.body).length > 0) {
     console.log(`[${timestamp}] Corpo: ${JSON.stringify(req.body)}`);
@@ -153,32 +153,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// DELETE - Remover usuário
-app.delete("/api/users/:id", async (req, res) => {
-  const timestamp = new Date().toLocaleString('pt-BR');
-  const userId = req.params.id;
-
-  try {
-    console.log(`[${timestamp}] Buscando usuário com ID: ${userId}`);
-    const user = await db.get("SELECT * FROM users WHERE id = ?", userId);
-    if (!user) {
-      console.log(`[${timestamp}] Usuário com ID ${userId} não encontrado`);
-      res.status(404).json({ error: "Usuário não encontrado" });
-      console.log(`[${timestamp}] Resposta enviada: 404 Not Found`);
-      return;
-    }
-
-    console.log(`[${timestamp}] Removendo usuário ID ${userId}...`);
-    await db.run("DELETE FROM users WHERE id = ?", userId);
-    console.log(`[${timestamp}] Usuário ID ${userId} removido`);
-    res.json({ message: "Usuário removido com sucesso" });
-    console.log(`[${timestamp}] Resposta enviada: 200 OK`);
-  } catch (error) {
-    console.error(`[${timestamp}] Erro ao remover usuário:`, error.message);
-    res.status(500).json({ error: "Erro ao remover usuário" });
-    console.log(`[${timestamp}] Resposta enviada: 500 Internal Server Error`);
-  }
-});
 
 // Inicializar o banco de dados e iniciar o servidor
 initializeDatabase()

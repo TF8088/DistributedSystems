@@ -3,6 +3,7 @@ ECHO Iniciando o projeto...
 
 :: Iniciar a API Node.js
 cd database
+
 start "API Node.js" cmd /k npm run start
 
 :: Aguardar 3 segundos

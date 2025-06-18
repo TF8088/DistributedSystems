@@ -49,9 +49,9 @@ client.on_subscribe = on_subscribe
 # === Conectar e iniciar loop ===
 try:
     logger.info("🚀 A tentar conectar...")
-    client.connect(BROKER, PORT, USERNAME ,PASSWORD,keepalive=60)
+    client.username_pw_set(USERNAME, PASSWORD)
+    client.connect(BROKER, PORT, keepalive=60)
     client.loop_start()
-
     # Mantém o script a correr
     while True:
         time.sleep(1)
