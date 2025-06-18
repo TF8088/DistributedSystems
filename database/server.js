@@ -29,7 +29,7 @@ async function initializeDatabase() {
   const timestamp = new Date().toLocaleString('pt-BR');
   console.log(`[${timestamp}] Inicializando banco de dados...`);
   db = await open({
-    filename: path.join(__dirname, "data", "database.sqlite"), // Ajustado para /data
+    filename: path.join(__dirname, "data", "database.sqlite"), 
     driver: sqlite3.Database,
   });
 
@@ -47,30 +47,30 @@ async function initializeDatabase() {
 
 // Rotas da API
 
-// GET - Buscar usuário por ID
+// GET - Buscar utilizador por ID
 app.get("/api/users/:id", async (req, res) => {
   const timestamp = new Date().toLocaleString('pt-BR');
   const userId = req.params.id;
   try {
-    console.log(`[${timestamp}] Buscando usuário com ID: ${userId}`);
+    console.log(`[${timestamp}] Buscando utilizador com ID: ${userId}`);
     const user = await db.get("SELECT * FROM users WHERE id = ?", userId);
     if (!user) {
-      console.log(`[${timestamp}] Usuário com ID ${userId} não encontrado`);
-      res.status(404).json({ error: "Usuário não encontrado" });
+      console.log(`[${timestamp}] utilizador com ID ${userId} não encontrado`);
+      res.status(404).json({ error: "utilizador não encontrado" });
       console.log(`[${timestamp}] Resposta enviada: 404 Not Found`);
       return;
     }
-    console.log(`[${timestamp}] Usuário encontrado: ${user.email}`);
+    console.log(`[${timestamp}] utilizador encontrado: ${user.email}`);
     res.json(user);
     console.log(`[${timestamp}] Resposta enviada: 200 OK`);
   } catch (error) {
-    console.error(`[${timestamp}] Erro ao buscar usuário:`, error.message);
-    res.status(500).json({ error: "Erro ao buscar usuário" });
+    console.error(`[${timestamp}] Erro ao buscar utilizador:`, error.message);
+    res.status(500).json({ error: "Erro ao buscar utilizador" });
     console.log(`[${timestamp}] Resposta enviada: 500 Internal Server Error`);
   }
 });
 
-// POST - Criar novo usuário
+// POST - Criar novo utilizador
 app.post("/api/users", async (req, res) => {
   const timestamp = new Date().toLocaleString('pt-BR');
   const { email, password } = req.body;
@@ -95,24 +95,24 @@ app.post("/api/users", async (req, res) => {
     console.log(`[${timestamp}] Hasheando senha para ${email}...`);
     const password_hash = await bcrypt.hash(password, 10);
 
-    console.log(`[${timestamp}] Inserindo novo usuário: ${email}`);
+    console.log(`[${timestamp}] Inserindo novo utilizador: ${email}`);
     const result = await db.run(
       `INSERT INTO users (email, password_hash) VALUES (?, ?)`,
       [email, password_hash]
     );
 
-    console.log(`[${timestamp}] Usuário criado com ID: ${result.lastID}`);
+    console.log(`[${timestamp}] utilizador criado com ID: ${result.lastID}`);
     const newUser = await db.get("SELECT * FROM users WHERE id = ?", result.lastID);
     res.status(201).json(newUser);
     console.log(`[${timestamp}] Resposta enviada: 201 Created`);
   } catch (error) {
-    console.error(`[${timestamp}] Erro ao criar usuário:`, error.message);
-    res.status(500).json({ error: "Erro ao criar usuário" });
+    console.error(`[${timestamp}] Erro ao criar utilizador:`, error.message);
+    res.status(500).json({ error: "Erro ao criar utilizador" });
     console.log(`[${timestamp}] Resposta enviada: 500 Internal Server Error`);
   }
 });
 
-// POST - Autenticar usuário
+// POST - Autenticar utilizador
 app.post("/api/login", async (req, res) => {
   const timestamp = new Date().toLocaleString('pt-BR');
   const { email, password } = req.body;
@@ -125,7 +125,7 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    console.log(`[${timestamp}] Buscando usuário com email: ${email}`);
+    console.log(`[${timestamp}] Buscando utilizador com email: ${email}`);
     const user = await db.get("SELECT * FROM users WHERE email = ?", email);
     if (!user) {
       console.log(`[${timestamp}] Email ${email} não encontrado`);
@@ -147,7 +147,7 @@ app.post("/api/login", async (req, res) => {
     res.json({ id: user.id, email: user.email });
     console.log(`[${timestamp}] Resposta enviada: 200 OK`);
   } catch (error) {
-    console.error(`[${timestamp}] Erro ao autenticar usuário:`, error.message);
+    console.error(`[${timestamp}] Erro ao autenticar utilizador:`, error.message);
     res.status(500).json({ error: "Erro ao autenticar" });
     console.log(`[${timestamp}] Resposta enviada: 500 Internal Server Error`);
   }
